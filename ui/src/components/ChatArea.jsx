@@ -1,6 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { PaperAirplaneIcon } from '@heroicons/react/24/outline';
 
+// Get API URL from environment variable or fallback to localhost
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8009/api';
+
 const ChatArea = ({ currentTaskId, setCurrentTaskId }) => {
   const [messages, setMessages] = useState([{
     content: '你好！我是OpenManus智能助手。请输入您的问题或指令，我会尽力帮助您。',
@@ -34,7 +37,7 @@ const ChatArea = ({ currentTaskId, setCurrentTaskId }) => {
 
     const pollLogs = setInterval(async () => {
       try {
-        const response = await fetch(`http://localhost:8009/api/logs/${currentTaskId}?last_index=${lastLogIndex}`);
+        const response = await fetch(`${API_URL}/logs/${currentTaskId}?last_index=${lastLogIndex}`);
         const data = await response.json();
         console.log('Polling Logs:', data); // Debugging statement
 
@@ -124,7 +127,7 @@ const ChatArea = ({ currentTaskId, setCurrentTaskId }) => {
 
     const pollStatus = setInterval(async () => {
       try {
-        const response = await fetch(`http://localhost:8009/api/status/${currentTaskId}`);
+        const response = await fetch(`${API_URL}/status/${currentTaskId}`);
         const data = await response.json();
         console.log('Polling Status:', data); // Debugging statement
 
@@ -190,7 +193,7 @@ const ChatArea = ({ currentTaskId, setCurrentTaskId }) => {
     setLastLogIndex(0);
 
     try {
-      const response = await fetch('http://localhost:8009/api/send', {
+      const response = await fetch(`${API_URL}/send`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
