@@ -151,11 +151,6 @@ def run_async_task(task_id, coro):
     loop.run_until_complete(coro)
     loop.close()
 
-# 路由定义
-@app.route('/')
-def index():
-    return render_template('index.html')
-
 @app.route('/api/send', methods=['POST'])
 def send_message():
     # 确保agent已初始化
@@ -236,11 +231,6 @@ def get_logs(task_id):
         "logs": [],
         "next_index": last_index
     })
-
-# HTML模板 (创建templates目录并添加index.html)
-@app.route('/templates/index.html')
-def get_template():
-    return render_template('index.html')
 
 # 主程序
 if __name__ == "__main__":
