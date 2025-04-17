@@ -1,28 +1,20 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import Browser from './Browser';
 import { GlobeAltIcon } from '@heroicons/react/24/outline';
 
+// Move component creation outside render function
+const BrowserComponent = ({ logs }) => <Browser logs={logs} />;
+
 const RightPanel = ({ activeTab, setActiveTab, currentTaskId, logs }) => {
-  const tabs = [
+  // Memoize tabs array
+  const tabs = useMemo(() => [
     {
       id: 'browser',
       name: '浏览器',
       icon: GlobeAltIcon,
-      component: (props) => <Browser {...props} logs={logs} />
-    },
-    // {
-    //   id: 'logs',
-    //   name: '日志',
-    //   icon: DocumentTextIcon,
-    //   component: (props) => <Logger {...props} currentTaskId={currentTaskId} />
-    // },
-    // {
-    //   id: 'files',
-    //   name: '文件',
-    //   icon: FolderIcon,
-    //   component: FileManager
-    // }
-  ];
+      component: BrowserComponent
+    }
+  ], []); // Empty dependency array since tabs never change
 
   return (
     <div className="w-1/2 flex flex-col border-l border-gray-200">
@@ -51,7 +43,7 @@ const RightPanel = ({ activeTab, setActiveTab, currentTaskId, logs }) => {
             key={tab.id}
             className={`h-full ${activeTab === tab.id ? '' : 'hidden'}`}
           >
-            <tab.component />
+            <tab.component logs={logs} />
           </div>
         ))}
       </div>
@@ -59,4 +51,12 @@ const RightPanel = ({ activeTab, setActiveTab, currentTaskId, logs }) => {
   );
 };
 
-export default RightPanel;
+// Wrap with React.memo to prevent re-renders if props haven't changed
+export default React.memo(RightPanel, (prevProps, nextProps) => {
+  // Custom comparison function to determine if re-render is needed
+  return (
+    prevProps.activeTab === nextProps.activeTab &&
+    // Only compare logs if they would affect the visible component
+    (prevProps.activeTab !== 'browser' || prevProps.logs === nextProps.logs)
+  );
+});

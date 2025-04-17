@@ -1,24 +1,31 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
+
+const extractUrlFromLogs = (logs) => {
+  if (!logs || logs.length === 0) return null;
+
+  for (let i = logs.length - 1; i >= 0; i--) {
+    const log = logs[i];
+    if (log.message.includes('Session debug_url:')) {
+      const urlMatch = log.message.match(/: (https?:\/\/[^\s]+)/);
+      if (urlMatch && urlMatch[1]) {
+        return urlMatch[1];
+      }
+    }
+  }
+  return null;
+};
 
 const Browser = ({ logs }) => {
   const [url, setUrl] = useState('');
   const iframeRef = useRef(null);
 
-  useEffect(() => {
-    if (!logs || logs.length === 0) return;
+  // Memoize URL extraction to prevent unnecessary processing
+  const newUrl = useMemo(() => extractUrlFromLogs(logs), [logs]);
 
-    // Process new logs
-    logs.forEach(log => {
-      // Check for URL in log messages
-      if (log.message.includes('Session debug_url:')) {
-        console.log(log.message);
-        const urlMatch = log.message.match(/: (https?:\/\/[^\s]+)/);
-        if (urlMatch && urlMatch[1]) {
-          setUrl(urlMatch[1]);
-        }
-      }
-    });
-  }, [logs]);
+  // Only update URL state if a new URL is found and it's different from current
+  if (newUrl && newUrl !== url) {
+    setUrl(newUrl);
+  }
 
   return (
     <div className="h-full flex flex-col">
@@ -35,4 +42,4 @@ const Browser = ({ logs }) => {
   );
 };
 
-export default Browser;
+export default React.memo(Browser);
