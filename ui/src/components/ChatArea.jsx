@@ -4,7 +4,14 @@ import { PaperAirplaneIcon } from '@heroicons/react/24/outline';
 // Get API URL from environment variable or fallback to localhost
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8009/api';
 
-const ChatArea = ({ currentTaskId, setCurrentTaskId }) => {
+const ChatArea = ({
+  currentTaskId,
+  setCurrentTaskId,
+  logs,
+  isLoading,
+  onStartLoading,
+  onStopLoading
+}) => {
   const [messages, setMessages] = useState([{
     content: '你好！我是OpenManus智能助手。请输入您的问题或指令，我会尽力帮助您。',
     sender: 'bot',
@@ -12,8 +19,6 @@ const ChatArea = ({ currentTaskId, setCurrentTaskId }) => {
     isStepMessage: true
   }]);
   const [inputValue, setInputValue] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [lastLogIndex, setLastLogIndex] = useState(0);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -24,9 +29,9 @@ const ChatArea = ({ currentTaskId, setCurrentTaskId }) => {
     scrollToBottom();
   }, [messages]);
 
-  // Log polling for messages
+  // Process logs for messages
   useEffect(() => {
-    if (!currentTaskId || !isLoading) return;
+    if (!logs || logs.length === 0) return;
 
     let currentStepMessages = [];
     let currentStep = null;
@@ -35,91 +40,67 @@ const ChatArea = ({ currentTaskId, setCurrentTaskId }) => {
       return !message.startsWith('开始处理任务') && !message.startsWith('Token usage:') && !message.startsWith('Session debug_url:');
     };
 
-    const pollLogs = setInterval(async () => {
-      try {
-        const response = await fetch(`${API_URL}/logs/${currentTaskId}?last_index=${lastLogIndex}`);
-        const data = await response.json();
-        console.log('Polling Logs:', data); // Debugging statement
-
-        if (data.logs && data.logs.length > 0) {
-          data.logs.forEach(log => {
-            console.log('Processing Log:', log.message); // Debugging statement
-
-            // Skip filtered logs
-            if (!shouldShowLog(log.message)) {
-              console.log('Filtered out log:', log.message); // Debugging statement
-              return;
-            }
-
-            // Check if this is a step execution message using startsWith
-            const isStepMessage = log.message.startsWith('Executing step');
-
-            if (isStepMessage) {
-              // If we have a previous step, add all its messages
-              if (currentStep && currentStepMessages.length > 0) {
-                console.log('Step completed:', currentStep); // Debugging statement
-                // Immediately update with previous step messages
-                currentStepMessages.forEach(msg => {
-                  setMessages(prev => [
-                    ...prev,
-                    {
-                      content: msg,
-                      sender: 'bot',
-                      timestamp: new Date().toISOString()
-                    }
-                  ]);
-                });
-              }
-              // Add the step message with the thinking icon
-              setMessages(prev => [
-                ...prev,
-                {
-                  content: log.message,
-                  sender: 'bot',
-                  timestamp: new Date().toISOString(),
-                  step: currentStep,
-                  isStepMessage: true  // Flag to distinguish this from other messages
-                }
-              ]);
-              // Start a new step
-              currentStep = log.message;
-              currentStepMessages = [];
-            } else if (currentStep) {
-              // Add message to current step without thinking icon
-              currentStepMessages.push(log.message);
-              setMessages(prev => [
-                ...prev,
-                {
-                  content: log.message,
-                  sender: 'bot',
-                  timestamp: new Date().toISOString(),
-                  step: currentStep
-                }
-              ]);
-            } else {
-              // Handle logs that come before any step
-              setMessages(prev => [
-                ...prev,
-                {
-                  content: log.message,
-                  sender: 'bot',
-                  timestamp: new Date().toISOString()
-                }
-              ]);
-            }
-          });
-
-          setLastLogIndex(data.next_index);
-        }
-      } catch (error) {
-        console.warn('Error polling logs:', error);
+    logs.forEach(log => {
+      if (!shouldShowLog(log.message)) {
+        return;
       }
-    }, 1000);
 
-    return () => {
-      clearInterval(pollLogs);
-    };
-  }, [currentTaskId, lastLogIndex, isLoading]);
+      // Check if this is a step execution message
+      const isStepMessage = log.message.startsWith('Executing step');
+
+      if (isStepMessage) {
+        // If we have a previous step, add all its messages
+        if (currentStep && currentStepMessages.length > 0) {
+          currentStepMessages.forEach(msg => {
+            setMessages(prev => [
+              ...prev,
+              {
+                content: msg,
+                sender: 'bot',
+                timestamp: new Date().toISOString()
+              }
+            ]);
+          });
+        }
+        // Add the step message with the thinking icon
+        setMessages(prev => [
+          ...prev,
+          {
+            content: log.message,
+            sender: 'bot',
+            timestamp: new Date().toISOString(),
+            step: currentStep,
+            isStepMessage: true
+          }
+        ]);
+        // Start a new step
+        currentStep = log.message;
+        currentStepMessages = [];
+      } else if (currentStep) {
+        // Add message to current step without thinking icon
+        currentStepMessages.push(log.message);
+        setMessages(prev => [
+          ...prev,
+          {
+            content: log.message,
+            sender: 'bot',
+            timestamp: new Date().toISOString(),
+            step: currentStep
+          }
+        ]);
+      } else {
+        // Handle logs that come before any step
+        setMessages(prev => [
+          ...prev,
+          {
+            content: log.message,
+            sender: 'bot',
+            timestamp: new Date().toISOString()
+          }
+        ]);
+      }
+    });
+  }, [logs]);
 
   // Status polling
   useEffect(() => {
@@ -129,10 +110,9 @@ const ChatArea = ({ currentTaskId, setCurrentTaskId }) => {
       try {
         const response = await fetch(`${API_URL}/status/${currentTaskId}`);
         const data = await response.json();
-        console.log('Polling Status:', data); // Debugging statement
 
         if (data.status === 'completed') {
-          setIsLoading(false);
+          onStopLoading();
           if (data.response) {
             setMessages(prev => [
               ...prev,
@@ -151,7 +131,7 @@ const ChatArea = ({ currentTaskId, setCurrentTaskId }) => {
     }, 1000);
 
     return () => clearInterval(pollStatus);
-  }, [currentTaskId, isLoading, setCurrentTaskId]);
+  }, [currentTaskId, isLoading, setCurrentTaskId, onStopLoading]);
 
   const formatMessage = (message) => {
     let formattedMessage = message.replace(/```(\w*)\n([\s\S]*?)```/g, (match, language, code) => {
@@ -189,8 +169,7 @@ const ChatArea = ({ currentTaskId, setCurrentTaskId }) => {
       isStepMessage: true
     }]);
     setInputValue('');
-    setIsLoading(true);
-    setLastLogIndex(0);
+    onStartLoading();
 
     try {
       const response = await fetch(`${API_URL}/send`, {
@@ -213,7 +192,7 @@ const ChatArea = ({ currentTaskId, setCurrentTaskId }) => {
           timestamp: new Date().toISOString()
         }];
       });
-      setIsLoading(false);
+      onStopLoading();
     }
   };
 
@@ -234,24 +213,22 @@ const ChatArea = ({ currentTaskId, setCurrentTaskId }) => {
           >
             <div className="flex-shrink-0 mr-3">
               <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
-                message.sender === 'bot'&& message.isStepMessage
+                message.sender === 'bot' && message.isStepMessage
                   ? 'bg-brand-100 text-brand-600'
-                  :message.sender === 'user' ? 'bg-gray-100 text-gray-600' : ''
+                  : message.sender === 'user' ? 'bg-gray-100 text-gray-600' : ''
               }`}>
                 {
                   message.sender === 'user' && (
-                    // human icon
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                   )
                 }
                 {message.sender === 'bot' && message.isStepMessage && (
-                  // thinking icon
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                   </svg>
-                ) }
+                )}
               </div>
             </div>
             <div className={`flex-1 ${

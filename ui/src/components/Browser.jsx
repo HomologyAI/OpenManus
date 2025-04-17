@@ -1,46 +1,24 @@
 import React, { useRef, useEffect, useState } from 'react';
-const Browser = ({ currentTaskId }) => {
+
+const Browser = ({ logs }) => {
   const [url, setUrl] = useState('');
   const iframeRef = useRef(null);
-  const [lastIndex, setLastIndex] = useState(0);
 
   useEffect(() => {
-    // Set up log polling
-    const pollLogs = async () => {
-      if (!currentTaskId) return;
+    if (!logs || logs.length === 0) return;
 
-      try {
-        const response = await fetch(`http://localhost:8009/api/logs/${currentTaskId}?last_index=${lastIndex}`);
-        const data = await response.json();
-
-        console.log("browser logs", data)
-
-        if (data.logs && data.logs.length > 0) {
-          data.logs.forEach(log => {
-            // Check for URL in log messages
-            if (log.message.includes('Session debug_url:')) {
-              console.log(log.message)
-              const urlMatch = log.message.match(/: (https?:\/\/[^\s]+)/);
-              if (urlMatch && urlMatch[1]) {
-                setUrl(urlMatch[1]);
-              }
-            }
-          });
-
-          setLastIndex(data.next_index);
+    // Process new logs
+    logs.forEach(log => {
+      // Check for URL in log messages
+      if (log.message.includes('Session debug_url:')) {
+        console.log(log.message);
+        const urlMatch = log.message.match(/: (https?:\/\/[^\s]+)/);
+        if (urlMatch && urlMatch[1]) {
+          setUrl(urlMatch[1]);
         }
-      } catch (error) {
-        console.warn('Error polling logs:', error);
       }
-    };
-
-    // Start polling every second
-    const pollInterval = setInterval(pollLogs, 1000);
-
-    // Cleanup on unmount
-    return () => clearInterval(pollInterval);
-  }, [currentTaskId, lastIndex]);
-
+    });
+  }, [logs]);
 
   return (
     <div className="h-full flex flex-col">

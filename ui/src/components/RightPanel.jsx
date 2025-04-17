@@ -1,14 +1,14 @@
 import React from 'react';
 import Browser from './Browser';
-import { GlobeAltIcon} from '@heroicons/react/24/outline';
+import { GlobeAltIcon } from '@heroicons/react/24/outline';
 
-const RightPanel = ({ activeTab, setActiveTab, currentTaskId }) => {
+const RightPanel = ({ activeTab, setActiveTab, currentTaskId, logs }) => {
   const tabs = [
     {
       id: 'browser',
       name: '浏览器',
       icon: GlobeAltIcon,
-      component: (props) => <Browser {...props} currentTaskId={currentTaskId} />
+      component: (props) => <Browser {...props} logs={logs} />
     },
     // {
     //   id: 'logs',
