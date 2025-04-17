@@ -21,7 +21,18 @@ pip install -r requirements.txt
 # Update frontend
 echo "Updating frontend..."
 cd ui
+
+# Reset ownership of build directory to ubuntu user before build
+if [ -d "build" ]; then
+    echo "Resetting build directory ownership..."
+    sudo chown -R ubuntu:ubuntu build
+fi
+
+# Clean install and build
+echo "Installing npm dependencies..."
 npm install
+
+echo "Building frontend..."
 npm run build
 cd ..
 
