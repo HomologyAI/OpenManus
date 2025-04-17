@@ -544,7 +544,7 @@ Page content:
                 "tabs": [tab.model_dump() for tab in state.tabs],
                 "help": "[0], [1], [2], etc., represent clickable indices corresponding to the elements listed. Clicking on these indices will navigate to or interact with the respective content behind them.",
                 "interactive_elements": (
-                    state.element_tree.clickable_elements_to_string()
+                    state.element_tree.clickable_elements_to_string(include_attributes=["type", "placeholder", "value", "href", "role", "aria-label", "alt", "title"])
                     if state.element_tree
                     else ""
                 ),
